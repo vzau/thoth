@@ -6,6 +6,7 @@ import (
 
 	"github.com/dhawton/log4g"
 	"github.com/urfave/cli/v2"
+	"github.com/vzau/thoth/internal/server"
 	"github.com/vzau/thoth/pkg/version"
 )
 
@@ -40,6 +41,7 @@ func main() {
 						log4g.SetLogLevel(log4g.DEBUG)
 					}
 					log.Info("Starting server")
+					server.Run(c.Int("port"))
 					return nil
 				},
 			},
@@ -55,8 +57,5 @@ func main() {
 		},
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal("Error: %s", err)
-	}
+	app.Run(os.Args)
 }
