@@ -1,0 +1,2 @@
+build:
+	go build -v -ldflags="-X 'pkg/version/version.BuildTime=$(shell date)' -X 'pkg/version/version.GitCommit=$(shell git rev-parse --short HEAD)' -X 'pkg/version/version.Version=$(shell git describe --tags --abbrev=0 HEAD || echo dirty)'" .
