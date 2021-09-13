@@ -7,9 +7,12 @@ import (
 	"github.com/common-nighthawk/go-figure"
 	"github.com/dhawton/log4g"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/vzau/common/utils"
+	"github.com/vzau/thoth/internal/controllers/auth"
 	"github.com/vzau/thoth/internal/server/middleware"
 	"github.com/vzau/thoth/pkg/database"
 	"github.com/vzau/thoth/pkg/version"
@@ -36,12 +39,19 @@ func Run(port int) {
 		}
 	}
 
+	if utils.Getenv("SESSION_SECRET", "a") == "a" {
+		log.Fatal("SESSION_SECRET is not set and is required.")
+	}
+
 	appenv := utils.Getenv("APP_ENV", "prod")
 	log.Info("APP_ENV=%s", appenv)
 	if appenv == "dev" {
 		log4g.SetLogLevel(log4g.DEBUG)
 	}
 	log.Debug("Done setting log level")
+
+	log.Info("Configuring OAuth2 Client")
+	auth.Init()
 
 	log.Info("Creating Database Connection")
 	database.Connect(utils.Getenv("DB_USERNAME", "root"), utils.Getenv("DB_PASSWORD", "secret12345"), utils.Getenv("DB_HOSTNAME", "localhost"), utils.Getenv("DB_PORT", "3306"), utils.Getenv("DB_NAME", "zau"))
@@ -56,6 +66,8 @@ func Run(port int) {
 }
 
 func NewServer(appenv string) *Server {
+	gin.SetMode(gin.ReleaseMode)
+
 	server := Server{}
 	engine := gin.New()
 	engine.Use(gin.Recovery())
@@ -66,6 +78,9 @@ func NewServer(appenv string) *Server {
 	engine.Use(cors.New(corsConfig))
 
 	engine.Use(middleware.Logger)
+
+	store := cookie.NewStore([]byte(utils.Getenv("SESSION_SECRET", "")))
+	engine.Use(sessions.Sessions(utils.Getenv("SESSION_COOKIE", "thoth"), store))
 
 	server.engine = engine
 	engine.LoadHTMLGlob("static/*")
