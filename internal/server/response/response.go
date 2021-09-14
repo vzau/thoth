@@ -31,6 +31,18 @@ type R struct {
 	Data    interface{} `xml:"data" json:"data"`
 }
 
+func RespondMessage(c *gin.Context, status int, message string) {
+	Respond(c, status, struct {
+		Message string `json:"message"`
+	}{message})
+}
+
+func RespondError(c *gin.Context, status int, message string) {
+	Respond(c, status, struct {
+		Message string `json:"message"`
+	}{message})
+}
+
 func Respond(c *gin.Context, status int, data interface{}) {
 	ret := R{}
 	ret.Status = http.StatusText(status)

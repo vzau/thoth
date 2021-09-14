@@ -84,22 +84,42 @@ func Run(port int) {
 }
 
 func NewServer(appenv string) *Server {
+	log.Debug("Setting gin mode to release mode")
 	gin.SetMode(gin.ReleaseMode)
 
 	server := Server{}
 	engine := gin.New()
+
+	log.Debug("Loading Recovery middleware")
 	engine.Use(gin.Recovery())
 
+	log.Debug("Loading CORS middleware")
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	corsConfig.AllowCredentials = true
 	engine.Use(cors.New(corsConfig))
 
+	log.Debug("Loading Logger middleware")
 	engine.Use(middleware.Logger)
 
+	log.Debug("Loading Session middleware")
 	store := cookie.NewStore([]byte(utils.Getenv("SESSION_SECRET", "")))
+	store.Options(sessions.Options{
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   86400 * 7,
+		Domain:   utils.Getenv("SESSION_DOMAIN", ".chicagoartcc.org"),
+	})
 	engine.Use(sessions.Sessions(utils.Getenv("SESSION_COOKIE", "thoth"), store))
 
+	log.Debug("Loading UpdateCookie middleware")
+	engine.Use(middleware.UpdateCookie)
+
+	// This checks for session and loads user info into Context
+	log.Debug("Loading auth middleware")
+	engine.Use(middleware.Auth)
+
+	log.Debug("Loading HTML globs")
 	server.engine = engine
 	engine.LoadHTMLGlob("static/*")
 

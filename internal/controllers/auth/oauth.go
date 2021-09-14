@@ -74,13 +74,21 @@ func GetLogin(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
+func GetLogout(c *gin.Context) {
+	session := sessions.Default(c)
+	session.Clear()
+	session.Save()
+
+	response.RespondMessage(c, http.StatusOK, "Logged out")
+}
+
 func GetCallback(c *gin.Context) {
 	session := sessions.Default(c)
-	state := session.Get("state").(string)
+	state := session.Get("state")
 	session.Delete("state")
 	session.Save()
 
-	if queryState, _ := c.GetQuery("state"); queryState != state {
+	if queryState, _ := c.GetQuery("state"); queryState != state.(string) {
 		log.Error("Received bad state at callback")
 		response.HandleError(c, "Invalid State")
 	}
@@ -101,9 +109,12 @@ func GetCallback(c *gin.Context) {
 		response.HandleError(c, "Error getting user data")
 	}
 
-	session.Set("user", userResult.UserData)
+	log.Debug("Setting user cid to %d", userResult.UserData.CID)
 	session.Set("cid", userResult.UserData.CID)
-	session.Save()
+	err = session.Save()
+	if err != nil {
+		log.Error("Error saving session", err)
+	}
 
 	c.Redirect(http.StatusTemporaryRedirect, utils.Getenv("LOGIN_REDIRECT", "https://www.chicagoartcc.org"))
 }
@@ -143,4 +154,8 @@ func GetUserData(token string, result chan UserResult) {
 		return
 	}
 	result <- userdata
+}
+
+func GetInfo(c *gin.Context) {
+	response.Respond(c, http.StatusOK, c.MustGet("x-user").(*dbTypes.User))
 }

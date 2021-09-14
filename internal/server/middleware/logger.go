@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/dhawton/log4g"
+	"github.com/dhawton/log4g"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,5 +32,5 @@ func Logger(c *gin.Context) {
 	end := time.Now()
 	latency := end.Sub(start)
 
-	log.Category("web").Info(fmt.Sprintf("%s - %s %s - %d \"%s\" %s", c.ClientIP(), c.Request.Method, c.Request.URL.Path, c.Writer.Status(), c.Request.UserAgent(), latency))
+	log4g.Category("web").Info(fmt.Sprintf("%s - %s %s - %d \"%s\" %s", c.ClientIP(), c.Request.Method, c.Request.URL.Path, c.Writer.Status(), c.Request.UserAgent(), latency))
 }

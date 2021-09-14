@@ -21,9 +21,11 @@ package server
 import (
 	"net/http"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/vzau/thoth/internal/controllers/auth"
 	"github.com/vzau/thoth/internal/controllers/live"
+	"github.com/vzau/thoth/internal/server/middleware"
 	"github.com/vzau/thoth/internal/server/response"
 )
 
@@ -40,13 +42,19 @@ func SetupRoutes(engine *gin.Engine) {
 		{
 			authGroup.GET("/login", auth.GetLogin)
 			authGroup.GET("/callback", auth.GetCallback)
-			//authGroup.GET("/refresh", )
-			//authGroup.GET("/logout",)
+			authGroup.GET("/logout", auth.GetLogout)
+		}
+
+		authorized := v1.Group("/")
+		authorized.Use(middleware.NotGuest)
+		{
+			authorized.GET("/auth/info", auth.GetInfo)
 		}
 	}
 
 	engine.GET("/test", func(c *gin.Context) {
-		response.HandleError(c, "Error Test")
+		s := sessions.Default(c)
+		response.Respond(c, http.StatusOK, gin.H{"user": s.Get("user"), "cid": s.Get("cid")})
 	})
 
 	engine.GET("/ping", func(c *gin.Context) {
