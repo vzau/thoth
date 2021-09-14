@@ -23,8 +23,10 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/vzau/common/utils"
 	"github.com/vzau/thoth/internal/controllers/auth"
 	"github.com/vzau/thoth/internal/controllers/live"
+	"github.com/vzau/thoth/internal/controllers/user"
 	"github.com/vzau/thoth/internal/server/middleware"
 	"github.com/vzau/thoth/internal/server/response"
 )
@@ -43,13 +45,34 @@ func SetupRoutes(engine *gin.Engine) {
 			authGroup.GET("/login", auth.GetLogin)
 			authGroup.GET("/callback", auth.GetCallback)
 			authGroup.GET("/logout", auth.GetLogout)
+
+			authGroup.Use(middleware.NotGuest)
+			{
+				authGroup.GET("/auth/info", auth.GetInfo)
+			}
 		}
 
-		authorized := v1.Group("/")
-		authorized.Use(middleware.NotGuest)
+		userGroup := v1.Group("/user")
 		{
-			authorized.GET("/auth/info", auth.GetInfo)
+			userGroup.GET("", user.GetUsers)
+			userGroup.GET("/:cid", user.GetUser)
+
+			userGroup.PATCH("/:cid", middleware.HasRoles([]string{"ATM", "DATM", "WM", "TA", "INS"}), user.PatchUser)
+			userGroup.DELETE("/:cid", middleware.HasRoles([]string{"ATM", "DATM", "WM"}), user.DeleteUser)
+
+			userGroup.GET("/:cid/roles", user.GetRoles)
+			userGroup.POST("/:cid/roles/:role", middleware.HasRoles([]string{"ATM", "DATM", "TA", "WM"}), user.PostRole)
+			userGroup.DELETE("/:cid/roles/:role", middleware.HasRoles([]string{"ATM", "DATM", "TA", "WM"}), user.DeleteRole)
 		}
+	}
+
+	if utils.Getenv("APP_ENV", "prod") == "dev" && utils.Getenv("ENABLE_LOGIN_ROUTE", "false") == "true" {
+		engine.GET("/login", func(c *gin.Context) {
+			session := sessions.Default(c)
+			session.Set("cid", uint(876594))
+			session.Save()
+			response.RespondMessage(c, http.StatusOK, "Logged in")
+		})
 	}
 
 	engine.GET("/test", func(c *gin.Context) {

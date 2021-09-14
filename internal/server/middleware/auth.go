@@ -1,3 +1,21 @@
+/*
+ZAU Thoth API
+Copyright (C) 2021 Daniel A. Hawton (daniel@hawton.org)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package middleware
 
 import (
@@ -14,14 +32,16 @@ var log = log4g.Category("middleware/auth")
 
 func Auth(c *gin.Context) {
 	session := sessions.Default(c)
-	cid := session.Get("cid").(uint)
+	cidSession := session.Get("cid")
 
-	if cid == 0 {
+	if cidSession == nil {
 		c.Set("x-cid", 0)
 		c.Set("x-user", nil)
 		c.Next()
 		return
 	}
+
+	cid := cidSession.(uint)
 
 	user := &dbTypes.User{}
 	if err := database.DB.Where(&dbTypes.User{CID: cid}).Preload(clause.Associations).First(&user).Error; err != nil {
@@ -46,6 +66,20 @@ func NotGuest(c *gin.Context) {
 	}
 
 	c.Next()
+}
+
+func HasRoles(roles []string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := c.MustGet("x-user").(*dbTypes.User)
+		for _, v := range roles {
+			if userHasRole(user, v) {
+				c.Next()
+				return
+			}
+		}
+		response.RespondError(c, 403, "Forbidden")
+		c.Abort()
+	}
 }
 
 func HasRole(role string) gin.HandlerFunc {

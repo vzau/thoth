@@ -21,11 +21,12 @@ package user
 import (
 	"github.com/vzau/thoth/pkg/database"
 	dbTypes "github.com/vzau/types/database"
+	"gorm.io/gorm/clause"
 )
 
 func GetUser(cid uint64) (*dbTypes.User, error) {
 	user := &dbTypes.User{}
-	if err := database.DB.Where("id = ?", cid).First(&user).Error; err != nil {
+	if err := database.DB.Where("cid = ?", cid).Preload(clause.Associations).First(&user).Error; err != nil {
 		return nil, err
 	}
 
@@ -39,4 +40,21 @@ func GetRoles(cid uint64) ([]*dbTypes.Role, error) {
 	}
 
 	return user.Roles, nil
+}
+
+func HasRoles(cid uint64, requiredRoles []string) bool {
+	roles, err := GetRoles(cid)
+	if err != nil {
+		return false
+	}
+
+	for idx := range roles {
+		for _, requiredRole := range requiredRoles {
+			if roles[idx].Name == requiredRole {
+				return true
+			}
+		}
+	}
+
+	return false
 }

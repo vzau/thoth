@@ -37,6 +37,11 @@ func RespondMessage(c *gin.Context, status int, message string) {
 	}{message})
 }
 
+func RespondBlank(c *gin.Context, status int) {
+	c.Status(http.StatusNoContent)
+	c.Abort()
+}
+
 func RespondError(c *gin.Context, status int, message string) {
 	Respond(c, status, struct {
 		Message string `json:"message"`

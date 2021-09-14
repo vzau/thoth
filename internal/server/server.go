@@ -34,6 +34,7 @@ import (
 	"github.com/vzau/thoth/internal/server/middleware"
 	"github.com/vzau/thoth/pkg/database"
 	"github.com/vzau/thoth/pkg/version"
+	dbTypes "github.com/vzau/types/database"
 )
 
 type Server struct {
@@ -73,6 +74,12 @@ func Run(port int) {
 
 	log.Info("Creating Database Connection")
 	database.Connect(utils.Getenv("DB_USERNAME", "root"), utils.Getenv("DB_PASSWORD", "secret12345"), utils.Getenv("DB_HOSTNAME", "localhost"), utils.Getenv("DB_PORT", "3306"), utils.Getenv("DB_NAME", "zau"))
+
+	log.Info("Running auto migrate")
+	err := database.DB.AutoMigrate(&dbTypes.User{}, &dbTypes.Role{})
+	if err != nil {
+		log.Fatal("Error running auto migrate: %s", err)
+	}
 
 	log.Info("Configuring gin webserver")
 	server := NewServer(appenv)
