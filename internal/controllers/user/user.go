@@ -24,10 +24,14 @@ import (
 
 	"github.com/dhawton/log4g"
 	"github.com/gin-gonic/gin"
+	"github.com/vzau/common/utils"
+	"github.com/vzau/thoth/internal/discord"
 	"github.com/vzau/thoth/internal/server/response"
+	"github.com/vzau/thoth/internal/vatusa"
 	"github.com/vzau/thoth/pkg/database"
-	"github.com/vzau/thoth/pkg/user"
+	userPkg "github.com/vzau/thoth/pkg/user"
 	dbTypes "github.com/vzau/types/database"
+	yaml "gopkg.in/yaml.v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -61,57 +65,10 @@ func GetUser(c *gin.Context) {
 	}{User: *user})
 }
 
-func PatchUserTraining(c *gin.Context) {
-	cid, err := strconv.ParseUint(c.Param("cid"), 10, 32)
-	if err != nil {
-		response.RespondMessage(c, http.StatusBadRequest, "Invalid user id")
-		return
-	}
-
-	user := findUserOrAbort(c, cid)
-	data := UserPatchTraining{}
-	if err := c.ShouldBind(&data); err != nil {
-		response.RespondMessage(c, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if data.Delivery != "" {
-		user.Delivery = data.Delivery
-	}
-	if data.Ground != "" {
-		user.Ground = data.Ground
-	}
-	if data.Local != "" {
-		user.Local = data.Local
-	}
-	if data.Approach != "" {
-		user.Approach = data.Approach
-	}
-	if data.Enroute != "" {
-		user.Enroute = data.Enroute
-	}
-
-	if err = database.DB.Save(user).Error; err != nil {
-		log.Error("Error updating user: %s", err.Error())
-		response.RespondMessage(c, http.StatusInternalServerError, "Error updating user")
-		return
-	}
-
-	response.Respond(c, http.StatusOK, struct {
-		User dbTypes.User `json:"user"`
-	}{User: *user})
-}
-
 func PatchUser(c *gin.Context) {
 	cid, err := strconv.ParseUint(c.Param("cid"), 10, 32)
 	if err != nil {
 		response.RespondMessage(c, http.StatusBadRequest, "Invalid user id")
-		return
-	}
-
-	// If not ATM, DATM or WM, they don't have perms to patch everything..
-	if !user.HasRoles(cid, []string{"ATM", "DATM", "WM"}) {
-		PatchUserTraining(c)
 		return
 	}
 
@@ -121,6 +78,40 @@ func PatchUser(c *gin.Context) {
 		response.RespondMessage(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	changer := c.MustGet("x-user").(*dbTypes.User)
+	patchNotes, _ := yaml.Marshal(data)
+
+	if !userPkg.HasRoles(cid, []string{"ATM", "DATM", "WM"}) {
+		if data.OperatingInitials != "" || data.Status != "" {
+			go discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "%s %s attempted to edit %s %s's profile, but cannot change OI or Status so was denied:\n%s", changer.FirstName, changer.LastName, user.FirstName, user.LastName, string(patchNotes))
+			response.RespondMessage(c, http.StatusForbidden, "You do not have permission to edit those field(s)")
+			return
+		}
+	}
+
+	// Remove from VATUSA, but only in prod env
+	// Run in goroutine as VATUSA's API is slow
+	go func() {
+		if data.Status != user.Status && data.Status == "removed" {
+			if user.ControllerType == "home" {
+				err := vatusa.DeleteController(cid)
+				if err != nil {
+					log.Error("Error deleting controller: %s", err.Error())
+					discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "%s %s attempted to remove %s %s from visitng roster, but failed to remove from VATUSA: %s", changer.FirstName, changer.LastName, user.FirstName, user.LastName, err.Error())
+					return
+				}
+				discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "%s %s removed %s %s (%d) from home roster.", changer.FirstName, changer.LastName, user.FirstName, user.LastName, cid)
+			} else if user.ControllerType == "visitor" {
+				err := vatusa.DeleteVisitor(cid)
+				if err != nil {
+					log.Error("Error deleting visitor: %s", err.Error())
+					discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "%s %s attempted to remove %s %s from roster, but failed to remove from VATUSA: %s", changer.FirstName, changer.LastName, user.FirstName, user.LastName, err.Error())
+					return
+				}
+				discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "%s %s removed %s %s (%d) from visitor roster.", changer.FirstName, changer.LastName, user.FirstName, user.LastName, cid)
+			}
+		}
+	}()
 
 	if data.OperatingInitials != "" {
 		user.OperatingInitials = data.OperatingInitials
@@ -144,6 +135,8 @@ func PatchUser(c *gin.Context) {
 		user.Enroute = data.Enroute
 	}
 
+	go discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "%s %s updated %s %s's profile:\n%s", changer.FirstName, changer.LastName, user.FirstName, user.LastName, string(patchNotes))
+
 	if err = database.DB.Save(user).Error; err != nil {
 		log.Error("Error updating user: %s", err.Error())
 		response.RespondMessage(c, http.StatusInternalServerError, "Error updating user")
@@ -163,6 +156,10 @@ func DeleteUser(c *gin.Context) {
 	}
 
 	user := findUserOrAbort(c, cid)
+	if user.Status != "removed" {
+		response.RespondMessage(c, http.StatusUnprocessableEntity, "You cannot delete a user that is not removed")
+		return
+	}
 	if err = database.DB.Delete(user).Error; err != nil {
 		log.Error("Error deleting user: %s", err.Error())
 		response.RespondMessage(c, http.StatusInternalServerError, "Error deleting user")

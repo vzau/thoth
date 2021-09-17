@@ -3,6 +3,8 @@ module github.com/vzau/thoth
 go 1.16
 
 require (
+	github.com/DisgoOrg/disgohook v1.4.3
+	github.com/DisgoOrg/log v1.1.2 // indirect
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
 	github.com/dhawton/log4g v0.99.3
@@ -22,17 +24,17 @@ require (
 	github.com/ugorji/go v1.2.6 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vzau/common v0.0.0-20210722011859-2af4235c98bf
-	github.com/vzau/types v1.0.1-0.20210914221440-721d69a11b56
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	github.com/vzau/types v1.0.1
+	golang.org/x/crypto v0.0.0-20210915214749-c084706c2272 // indirect
 	golang.org/x/net v0.0.0-20210913180222-943fd674d43e // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
-	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0 // indirect
+	golang.org/x/sys v0.0.0-20210915083310-ed5796bab164 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.29.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/mysql v1.1.2
 	gorm.io/gorm v1.21.15
 	sigs.k8s.io/yaml v1.2.0 // indirect

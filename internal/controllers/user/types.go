@@ -19,19 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package user
 
 type UserPatch struct {
-	OperatingInitials string `json:"operatingInitials" form:"operatingInitials" yaml:"operatingInitials" binding:"max=2"`
-	Status            string `json:"status" form:"status" yaml:"status" binding:"oneof='' none active inactive leave"`
-	Delivery          string `json:"delivery" form:"delivery" yaml:"delivery" binding:"oneof='' none minor major-solo certified"`
-	Ground            string `json:"ground" form:"ground" yaml:"ground" binding:"oneof='' none minor major-solo certified"`
-	Local             string `json:"local" form:"local" yaml:"local" binding:"oneof='' none minor major-solo certified"`
-	Approach          string `json:"approach" form:"approach" yaml:"approach" binding:"oneof='' none minor major-solo certified"`
-	Enroute           string `json:"enroute" form:"enroute" yaml:"enroute" binding:"oneof='' none major-solo certified"`
-}
-
-type UserPatchTraining struct {
-	Delivery string `json:"delivery" form:"delivery" yaml:"delivery" binding:"oneof=none minor major-solo certified"`
-	Ground   string `json:"ground" form:"ground" yaml:"ground" binding:"oneof=none minor major-solo certified"`
-	Local    string `json:"local" form:"local" yaml:"local" binding:"oneof=none minor major-solo certified"`
-	Approach string `json:"approach" form:"approach" yaml:"approach" binding:"oneof=none minor major-solo certified"`
-	Enroute  string `json:"enroute" form:"enroute" yaml:"enroute" binding:"oneof=none major-solo certified"`
+	OperatingInitials string `json:"operatingInitials" form:"operatingInitials" yaml:"operatingInitials,omitempty" binding:"max=2"`
+	Status            string `json:"status" form:"status" yaml:"status,omitempty" binding:"oneof='' none active inactive leave removed"`
+	Delivery          string `json:"delivery" form:"delivery" yaml:"delivery,omitempty" binding:"oneof='' none minor major-solo certified"`
+	Ground            string `json:"ground" form:"ground" yaml:"ground,omitempty" binding:"oneof='' none minor major-solo certified"`
+	Local             string `json:"local" form:"local" yaml:"local,omitempty" binding:"oneof='' none minor major-solo certified"`
+	Approach          string `json:"approach" form:"approach" yaml:"approach,omitempty" binding:"oneof='' none minor major-solo certified"`
+	Enroute           string `json:"enroute" form:"enroute" yaml:"enroute,omitempty" binding:"oneof='' none major-solo certified"`
 }
