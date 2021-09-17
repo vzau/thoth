@@ -76,7 +76,7 @@ func Run(port int) {
 	database.Connect(utils.Getenv("DB_USERNAME", "root"), utils.Getenv("DB_PASSWORD", "secret12345"), utils.Getenv("DB_HOSTNAME", "localhost"), utils.Getenv("DB_PORT", "3306"), utils.Getenv("DB_NAME", "zau"))
 
 	log.Info("Running auto migrate")
-	err := database.DB.AutoMigrate(&dbTypes.User{}, &dbTypes.Role{})
+	err := database.DB.AutoMigrate(&dbTypes.User{}, &dbTypes.Role{}, &dbTypes.Category{}, &dbTypes.File{})
 	if err != nil {
 		log.Fatal("Error running auto migrate: %s", err)
 	}
