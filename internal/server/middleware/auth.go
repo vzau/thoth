@@ -70,6 +70,8 @@ func NotGuest(c *gin.Context) {
 
 func HasRoles(roles []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		NotGuest(c)
+
 		user := c.MustGet("x-user").(*dbTypes.User)
 		for _, v := range roles {
 			if userHasRole(user, v) {
@@ -84,6 +86,8 @@ func HasRoles(roles []string) gin.HandlerFunc {
 
 func HasRole(role string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		NotGuest(c)
+
 		user := c.MustGet("x-user").(*dbTypes.User)
 
 		if !userHasRole(user, role) {
@@ -105,15 +109,19 @@ func userHasRole(user *dbTypes.User, role string) bool {
 	return false
 }
 
-func IsStaff(c *gin.Context) bool {
+func IsStaff(c *gin.Context) {
+	NotGuest(c)
+
 	user := c.MustGet("x-user").(*dbTypes.User)
 	staffRoles := []string{"ATM", "DATM", "TA", "EC", "FE", "WM"}
 
 	for _, v := range staffRoles {
 		if userHasRole(user, v) {
-			return true
+			c.Next()
+			return
 		}
 	}
 
-	return false
+	response.RespondError(c, 403, "Forbidden")
+	c.Abort()
 }
