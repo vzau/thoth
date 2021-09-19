@@ -57,6 +57,7 @@ func SetupRoutes(engine *gin.Engine) {
 		{
 			cdnGroup.GET("", cdn.GetCDN)
 			cdnGroup.POST("", middleware.IsStaff, cdn.PostCDN)
+			cdnGroup.GET("/:id", cdn.GetCDNFile)
 			cdnGroup.DELETE("/:id", middleware.IsStaff, cdn.DeleteCDN)
 			cdnGroup.POST("/:id", middleware.IsStaff, cdn.PostCDNUpdate)
 			cdnGroup.PATCH("/:id", middleware.IsStaff, cdn.PatchCDNUpdate)

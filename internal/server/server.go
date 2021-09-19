@@ -21,6 +21,7 @@ package server
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/dhawton/log4g"
@@ -32,6 +33,7 @@ import (
 	"github.com/vzau/common/utils"
 	"github.com/vzau/thoth/internal/controllers/auth"
 	"github.com/vzau/thoth/internal/server/middleware"
+	"github.com/vzau/thoth/pkg/cache"
 	"github.com/vzau/thoth/pkg/database"
 	"github.com/vzau/thoth/pkg/version"
 	dbTypes "github.com/vzau/types/database"
@@ -79,6 +81,16 @@ func Run(port int) {
 	err := database.DB.AutoMigrate(&dbTypes.User{}, &dbTypes.Role{}, &dbTypes.Category{}, &dbTypes.File{})
 	if err != nil {
 		log.Fatal("Error running auto migrate: %s", err)
+	}
+
+	log.Info("Building Cache")
+	defaultTTL, _ := strconv.ParseInt(utils.Getenv("CACHE_DEFAULT_TTL", "300"), 10, 32)
+	if defaultTTL == 0 {
+		defaultTTL = 48 * 60 * 60
+	}
+	err = cache.BuildCache(int(defaultTTL))
+	if err != nil {
+		log.Fatal("Error building cache: %s", err)
 	}
 
 	log.Info("Configuring gin webserver")
