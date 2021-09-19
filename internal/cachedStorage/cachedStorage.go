@@ -31,7 +31,7 @@ import (
 func GetCachedFile(file dbTypes.File) (*bytes.Reader, error) {
 	cacheData, exists := cache.Cache.Get(fmt.Sprintf("cdn/%d", file.ID))
 	if !exists {
-		data, err := storage.GetFileStream(file.Filename)
+		data, err := storage.GetFileStream(file.Bucket, file.Key)
 		if err != nil {
 			return nil, err
 		}

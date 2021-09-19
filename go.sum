@@ -338,6 +338,8 @@ github.com/vzau/common v0.0.0-20210722011859-2af4235c98bf h1:MA8Yvj+K02P2dkAs9kx
 github.com/vzau/common v0.0.0-20210722011859-2af4235c98bf/go.mod h1:9CgZjbVsmrcBjkGxKQ4piEN/KM2FVgWaje5Z80Ms+tQ=
 github.com/vzau/types v1.0.2 h1:3hQcxEEKs/Sd7wFHYKX2CQTWgGtGUTzAnZoQgW2vfqg=
 github.com/vzau/types v1.0.2/go.mod h1:HttNL+hY2xVwdXvt90Yt4q1I5PDOXLYlcDvSNnGirjk=
+github.com/vzau/types v1.0.3 h1:wXRgKaHyNHTQ0D6JqtTzzintRgnvS8wpF+7CaBH8UlE=
+github.com/vzau/types v1.0.3/go.mod h1:HttNL+hY2xVwdXvt90Yt4q1I5PDOXLYlcDvSNnGirjk=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

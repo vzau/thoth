@@ -88,7 +88,10 @@ func Run(port int) {
 	if defaultTTL == 0 {
 		defaultTTL = 48 * 60 * 60
 	}
-	cache.BuildCache(int(defaultTTL))
+	err = cache.BuildCache(int(defaultTTL))
+	if err != nil {
+		log.Fatal("Error building cache: %s", err)
+	}
 
 	log.Info("Configuring gin webserver")
 	server := NewServer(appenv)

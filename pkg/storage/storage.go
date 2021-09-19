@@ -20,19 +20,13 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 
-	"github.com/dhawton/log4g"
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/vzau/common/utils"
 )
-
-var log = log4g.Category("s3")
 
 func prepConnection() (*minio.Client, error) {
 	endpoint := utils.Getenv("AWS_ENDPOINT", "")
@@ -44,11 +38,9 @@ func prepConnection() (*minio.Client, error) {
 		Secure: true,
 	})
 	if err != nil {
-		log.Error("Error creating minio client: %s", err.Error())
 		return nil, err
-	}
 
-	log.Debug("Created minio client")
+	}
 	return minioClient, nil
 }
 
@@ -74,34 +66,18 @@ func UploadFile(bucket string, key string, filePath string, contentType string) 
 		},
 	})
 	if err != nil {
-		log.Error("Error uploading file: %s", err.Error())
 		return err
 	}
 
-	log.Debug("Uploaded file to storage")
 	return nil
 }
 
-func GetFileStream(storageUrl string) (*minio.Object, error) {
-	u, err := url.Parse(storageUrl)
+func GetFileStream(bucket string, key string) (*minio.Object, error) {
+	minioClient, err := prepConnection()
 	if err != nil {
 		return nil, err
 	}
-	var minioClient *minio.Client
-	var bucket string
 
-	// Allow for multiple buckets, so check the host here
-	if u.Host == "do.chicagoartcc.org" {
-		minioClient, err = prepConnection()
-		bucket = "vzau"
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, errors.New("unsupported storage provider")
-	}
-
-	key := strings.TrimLeft(u.Path, "/")
 	file, err := minioClient.GetObject(context.Background(), bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, err
@@ -119,10 +95,8 @@ func DeleteFile(bucket string, key string) error {
 		ForceDelete: true,
 	})
 	if err != nil {
-		log.Error("Error deleting file: %s", err.Error())
 		return err
 	}
 
-	log.Debug("Deleted file from storage")
 	return nil
 }

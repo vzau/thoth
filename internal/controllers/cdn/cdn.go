@@ -159,13 +159,6 @@ func PostCDN(c *gin.Context) {
 		return
 	}
 
-	dbFile := dbTypes.File{
-		Name:        fileDetails.Name,
-		Description: fileDetails.Description,
-		Category:    category,
-		CategoryID:  category.ID,
-	}
-
 	filename := filepath.Base(file.Filename)
 	ext := filepath.Ext(filename)
 	filename, _ = gonanoid.New()
@@ -173,6 +166,17 @@ func PostCDN(c *gin.Context) {
 		filename = "dev_" + filename
 	}
 	filename = filename + ext
+
+	dbFile := dbTypes.File{
+		Name:        fileDetails.Name,
+		Description: fileDetails.Description,
+		Category:    category,
+		CategoryID:  category.ID,
+		Bucket:      utils.Getenv("AWS_BUCKET", "vzau"),
+		Key:         "uploads/" + filename,
+		ContentType: storage.GetContentType("/tmp/" + filename),
+		Size:        file.Size,
+	}
 
 	if err := c.SaveUploadedFile(file, filepath.Join("/tmp", filename)); err != nil {
 		log.Error("Error saving file: %s", err.Error())
@@ -182,7 +186,7 @@ func PostCDN(c *gin.Context) {
 
 	dbFile.Filename = utils.Getenv("AWS_PUBLIC_ENDPOINT", "https://do.chicagoartcc.org/") + "uploads/" + filename
 
-	err = storage.UploadFile(utils.Getenv("AWS_BUCKET", "vzau"), "uploads/"+filename, "/tmp/"+filename, storage.GetContentType("/tmp/"+filename))
+	err = storage.UploadFile(dbFile.Bucket, dbFile.Key, "/tmp/"+filename, dbFile.ContentType)
 	if err != nil {
 		log.Error("Error uploading file: %s", err.Error())
 		response.RespondMessage(c, http.StatusInternalServerError, "Error uploading file")
