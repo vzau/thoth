@@ -41,15 +41,39 @@ var log = log4g.Category("controllers/cdn")
 
 func GetCDN(c *gin.Context) {
 	files := []dbTypes.File{}
+	resultFiles := []dbTypes.File{}
+
 	if err := database.DB.Preload(clause.Associations).Find(&files).Error; err != nil {
 		log.Error("Error fetching files: %s", err.Error())
 		response.RespondMessage(c, http.StatusInternalServerError, "Error fetching files")
 		return
 	}
 
+	filterArray, hasArray := c.GetQueryArray("filter")
+	if hasArray {
+		resultFiles = filterFiles(files, filterArray)
+	} else {
+		filterString, hasString := c.GetQuery("filter")
+		if hasString {
+			resultFiles = filterFiles(files, []string{filterString})
+		}
+	}
 	response.Respond(c, http.StatusOK, struct {
 		Files []dbTypes.File `json:"files"`
-	}{files})
+	}{resultFiles})
+}
+
+func filterFiles(files []dbTypes.File, filterArray []string) []dbTypes.File {
+	resultFiles := []dbTypes.File{}
+	for _, filter := range filterArray {
+		for _, file := range files {
+			if strings.ToLower(file.Category.Name) == strings.ToLower(filter) {
+				resultFiles = append(resultFiles, file)
+				break
+			}
+		}
+	}
+	return resultFiles
 }
 
 func categoryExists(name string) (dbTypes.Category, bool) {
