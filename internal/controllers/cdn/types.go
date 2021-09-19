@@ -18,8 +18,37 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 package cdn
 
+import (
+	"encoding/json"
+	"time"
+
+	dbTypes "github.com/vzau/types/database"
+)
+
 type CDN struct {
 	Name        string `json:"name" form:"name" yaml:"name"`
 	Category    string `json:"category" form:"category" yaml:"category"`
 	Description string `json:"description" form:"description" yaml:"description"`
+}
+
+type FileDTO struct {
+	Name        string    `json:"name" form:"name" yaml:"name"`
+	Category    string    `json:"category" form:"category" yaml:"category"`
+	Description string    `json:"description" form:"description" yaml:"description"`
+	URL         string    `json:"url" form:"url" yaml:"url"`
+	CreatedAt   time.Time `json:"created_at" form:"created_at" yaml:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" form:"updated_at" yaml:"updated_at"`
+}
+
+type FileCache struct {
+	File dbTypes.File `json:"file" form:"file" yaml:"file"`
+	Data []byte       `json:"data" form:"data" yaml:"data"`
+}
+
+func (f FileCache) MarshalBinary() ([]byte, error) {
+	return json.Marshal(f)
+}
+
+func (f *FileCache) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, f)
 }

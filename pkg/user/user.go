@@ -24,6 +24,9 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+var StaffRoles = []string{"ATM", "DATM", "TA", "EC", "FE", "WM"}
+var StaffRolesTraining = []string{"ATM", "DATM", "TA", "EC", "FE", "WM", "INS", "MTR"}
+
 func GetUser(cid uint64) (*dbTypes.User, error) {
 	user := &dbTypes.User{}
 	if err := database.DB.Where("cid = ?", cid).Preload(clause.Associations).First(&user).Error; err != nil {
@@ -56,5 +59,16 @@ func HasRoles(cid uint64, requiredRoles []string) bool {
 		}
 	}
 
+	return false
+}
+
+func HasRolesWithUser(user *dbTypes.User, requiredRoles []string) bool {
+	for idx := range user.Roles {
+		for _, requiredRole := range requiredRoles {
+			if user.Roles[idx].Name == requiredRole {
+				return true
+			}
+		}
+	}
 	return false
 }

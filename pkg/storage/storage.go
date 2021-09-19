@@ -20,8 +20,11 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/dhawton/log4g"
 	minio "github.com/minio/minio-go/v7"
@@ -77,6 +80,33 @@ func UploadFile(bucket string, key string, filePath string, contentType string) 
 
 	log.Debug("Uploaded file to storage")
 	return nil
+}
+
+func GetFileStream(storageUrl string) (*minio.Object, error) {
+	u, err := url.Parse(storageUrl)
+	if err != nil {
+		return nil, err
+	}
+	var minioClient *minio.Client
+	var bucket string
+
+	// Allow for multiple buckets, so check the host here
+	if u.Host == "do.chicagoartcc.org" {
+		minioClient, err = prepConnection()
+		bucket = "vzau"
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("unsupported storage provider")
+	}
+
+	key := strings.TrimLeft(u.Path, "/")
+	file, err := minioClient.GetObject(context.Background(), bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 func DeleteFile(bucket string, key string) error {

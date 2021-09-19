@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 package cdn
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -28,10 +29,12 @@ import (
 	"github.com/gin-gonic/gin"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/vzau/common/utils"
+	"github.com/vzau/thoth/internal/cachedStorage"
 	"github.com/vzau/thoth/internal/server/response"
 	"github.com/vzau/thoth/pkg/database"
 	"github.com/vzau/thoth/pkg/discord"
 	"github.com/vzau/thoth/pkg/storage"
+	"github.com/vzau/thoth/pkg/user"
 	dbTypes "github.com/vzau/types/database"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -56,18 +59,67 @@ func GetCDN(c *gin.Context) {
 		filterString, hasString := c.GetQuery("filter")
 		if hasString {
 			resultFiles = filterFiles(files, []string{filterString})
+		} else {
+			resultFiles = files
 		}
 	}
+
 	response.Respond(c, http.StatusOK, struct {
-		Files []dbTypes.File `json:"files"`
-	}{resultFiles})
+		Files []FileDTO `json:"files"`
+	}{Files: setDownloadUrl(resultFiles)})
+}
+
+func GetCDNFile(c *gin.Context) {
+	id := c.Param("id")
+	file := dbTypes.File{}
+	if err := database.DB.Find(&file, id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.RespondMessage(c, http.StatusNotFound, "File not found")
+			return
+		}
+		log.Error("Error fetching file: %s", err.Error())
+		response.RespondMessage(c, http.StatusInternalServerError, "Error fetching file")
+		return
+	}
+
+	if file.Category.Name == "Staff" {
+		u, exists := c.Get("x-user")
+		if !exists || u == nil || !user.HasRolesWithUser(u.(*dbTypes.User), user.StaffRolesTraining) {
+			response.RespondMessage(c, http.StatusForbidden, "Forbidden")
+			return
+		}
+	}
+
+	reader, err := cachedStorage.GetCachedFile(file)
+	if err != nil {
+		log.Error("Error fetching file: %s", err.Error())
+		response.RespondMessage(c, http.StatusInternalServerError, "Error fetching file")
+		return
+	}
+	http.ServeContent(c.Writer, c.Request, file.Filename, file.CreatedAt, reader)
+}
+
+func setDownloadUrl(files []dbTypes.File) []FileDTO {
+	var ret []FileDTO
+	for _, file := range files {
+		ret = append(ret, FileDTO{
+			Name:        file.Name,
+			Description: file.Description,
+			Category:    file.Category.Name,
+			URL:         fmt.Sprintf("/v1/cdn/%d", file.ID),
+			CreatedAt:   file.CreatedAt,
+			UpdatedAt:   file.UpdatedAt,
+		})
+	}
+
+	return ret
 }
 
 func filterFiles(files []dbTypes.File, filterArray []string) []dbTypes.File {
 	resultFiles := []dbTypes.File{}
 	for _, filter := range filterArray {
 		for _, file := range files {
-			if strings.ToLower(file.Category.Name) == strings.ToLower(filter) {
+			if strings.EqualFold(file.Category.Name, filter) {
 				resultFiles = append(resultFiles, file)
 				break
 			}
