@@ -26,6 +26,7 @@ import (
 	"github.com/vzau/common/utils"
 	"github.com/vzau/thoth/internal/controllers/auth"
 	"github.com/vzau/thoth/internal/controllers/cdn"
+	"github.com/vzau/thoth/internal/controllers/events"
 	"github.com/vzau/thoth/internal/controllers/live"
 	"github.com/vzau/thoth/internal/controllers/user"
 	"github.com/vzau/thoth/internal/server/middleware"
@@ -61,6 +62,11 @@ func SetupRoutes(engine *gin.Engine) {
 			cdnGroup.DELETE("/:id", middleware.IsStaff, cdn.DeleteCDN)
 			cdnGroup.POST("/:id", middleware.IsStaff, cdn.PostCDNUpdate)
 			cdnGroup.PATCH("/:id", middleware.IsStaff, cdn.PatchCDNUpdate)
+		}
+
+		eventGroup := v1.Group("/events")
+		{
+			eventGroup.GET("", events.GetEvents)
 		}
 
 		userGroup := v1.Group("/user")

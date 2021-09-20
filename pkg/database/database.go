@@ -52,6 +52,7 @@ func Connect(user string, pass string, hostname string, port string, database st
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetMaxIdleConns(10)
+
 	if err != nil {
 		log.Error("Error connecting to database: " + err.Error())
 		if attempt < MaxAttempts {
