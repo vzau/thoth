@@ -21,7 +21,6 @@ package cdn
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/vzau/common/utils"
 	"github.com/vzau/thoth/internal/cachedStorage"
 	"github.com/vzau/thoth/internal/server/response"
+	"github.com/vzau/thoth/pkg/cache"
 	"github.com/vzau/thoth/pkg/database"
 	"github.com/vzau/thoth/pkg/discord"
 	"github.com/vzau/thoth/pkg/storage"
@@ -96,6 +96,14 @@ func GetCDNFile(c *gin.Context) {
 		response.RespondMessage(c, http.StatusInternalServerError, "Error fetching file")
 		return
 	}
+
+	if strings.Contains(file.ContentType, "image/") || strings.EqualFold(file.ContentType, "application/pdf") {
+		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%s", file.Filename))
+	} else {
+		c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", file.Filename))
+	}
+	c.Writer.Header().Set("Content-Type", file.ContentType)
+
 	http.ServeContent(c.Writer, c.Request, file.Filename, file.CreatedAt, reader)
 }
 
@@ -176,6 +184,7 @@ func PostCDN(c *gin.Context) {
 		Key:         "uploads/" + filename,
 		ContentType: storage.GetContentType("/tmp/" + filename),
 		Size:        file.Size,
+		Filename:    filepath.Base(file.Filename),
 	}
 
 	if err := c.SaveUploadedFile(file, filepath.Join("/tmp", filename)); err != nil {
@@ -183,8 +192,6 @@ func PostCDN(c *gin.Context) {
 		response.RespondMessage(c, http.StatusInternalServerError, "Error saving file")
 		return
 	}
-
-	dbFile.Filename = utils.Getenv("AWS_PUBLIC_ENDPOINT", "https://do.chicagoartcc.org/") + "uploads/" + filename
 
 	err = storage.UploadFile(dbFile.Bucket, dbFile.Key, "/tmp/"+filename, dbFile.ContentType)
 	if err != nil {
@@ -204,18 +211,11 @@ func PostCDN(c *gin.Context) {
 	}{dbFile})
 }
 
-func handleDelete(file string) {
-	url, err := url.Parse(file)
-	if err != nil {
-		log.Error("Error parsing url: %s", err.Error())
-		discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "Failed to parse %s for deletion, delete manually!", file)
-		return
-	}
-	log.Debug("Deleting %s from %s", url.Path, utils.Getenv("AWS_BUCKET", "vzau"))
-	err = storage.DeleteFile(utils.Getenv("AWS_BUCKET", "vzau"), strings.TrimLeft(url.Path, "/"))
+func handleDelete(bucket string, key string) {
+	err := storage.DeleteFile(bucket, key)
 	if err != nil {
 		log.Error("Error deleting file: %s", err.Error())
-		discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "Failed to delete %s, delete manually!", file)
+		discord.SendToDiscordf(utils.Getenv("DISCORD_WEBHOOK_AUDIT", ""), "Failed to delete %s/%s, delete manually!", bucket, key)
 		return
 	}
 }
@@ -233,7 +233,8 @@ func DeleteCDN(c *gin.Context) {
 		return
 	}
 
-	go handleDelete(file.Filename)
+	go handleDelete(file.Bucket, file.Key)
+	cache.Cache.Delete(fmt.Sprintf("cdn/%d", file.ID))
 
 	if err := database.DB.Delete(&file).Error; err != nil {
 		log.Error("Error deleting file: %s", err.Error())
@@ -316,14 +317,12 @@ func PostCDNUpdate(c *gin.Context) {
 		return
 	}
 
-	u, err := url.Parse(file.Filename)
-	if err != nil {
-		log.Error("Error parsing url: %s", err.Error())
-		response.RespondMessage(c, http.StatusBadRequest, "Error parsing url")
+	tmpfile, _ := gonanoid.New()
+	if err := database.DB.Save(&file).Error; err != nil {
+		log.Error("Error saving file: %s", err.Error())
+		response.RespondMessage(c, http.StatusInternalServerError, "Error saving file")
 		return
 	}
-	filename := strings.TrimLeft(u.Path, "/")
-	tmpfile, _ := gonanoid.New()
 
 	if err := c.SaveUploadedFile(uploadedFile, filepath.Join("/tmp", tmpfile)); err != nil {
 		log.Error("Error saving file: %s", err.Error())
@@ -331,12 +330,24 @@ func PostCDNUpdate(c *gin.Context) {
 		return
 	}
 
-	err = storage.UploadFile(utils.Getenv("AWS_BUCKET", "vzau"), filename, "/tmp/"+tmpfile, storage.GetContentType("/tmp/"+tmpfile))
+	file.ContentType = storage.GetContentType("/tmp/" + tmpfile)
+	file.Size = uploadedFile.Size
+	file.Filename = filepath.Base(uploadedFile.Filename)
+
+	if err := database.DB.Save(&file).Error; err != nil {
+		log.Error("Error saving file: %s", err.Error())
+		response.RespondMessage(c, http.StatusInternalServerError, "Error saving file")
+		return
+	}
+
+	err = storage.UploadFile(utils.Getenv("AWS_BUCKET", "vzau"), file.Key, "/tmp/"+tmpfile, storage.GetContentType("/tmp/"+tmpfile))
 	if err != nil {
 		log.Error("Error uploading file: %s", err.Error())
 		response.RespondMessage(c, http.StatusInternalServerError, "Error uploading file")
 		return
 	}
+
+	cache.Cache.Delete(fmt.Sprintf("cdn/%d", file.ID))
 
 	response.RespondBlank(c, http.StatusNoContent)
 }

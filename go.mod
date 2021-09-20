@@ -26,7 +26,7 @@ require (
 	github.com/ugorji/go v1.2.6 // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/vzau/common v0.0.0-20210722011859-2af4235c98bf
-	github.com/vzau/types v1.0.3
+	github.com/vzau/types v1.0.4-0.20210919231420-ef5e12c59d7a
 	go.opentelemetry.io/otel v0.20.0 // indirect
 	golang.org/x/crypto v0.0.0-20210915214749-c084706c2272 // indirect
 	golang.org/x/net v0.0.0-20210916014120-12bc252f5db8 // indirect
